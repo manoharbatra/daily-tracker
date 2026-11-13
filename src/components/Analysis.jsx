@@ -22,8 +22,87 @@ function rangeFor(period, todos) {
   if (period === 'week') return { start: startOfWeek(today), end: addDays(startOfWeek(today), 6) }
   if (period === 'month') return { start: monthStart(today), end: monthEnd(today) }
   if (period === 'last30') return { start: addDays(today, -29), end: today }
-  const first = todos.reduce((min, t) => (t.date < min ? t.date : min), today)
+  const first = todos.reduce((min, t) => (t.date && t.date < min ? t.date : min), today)
   return { start: first, end: today }
+}
+
+const MAX_RESULTS = 50
+
+function Highlight({ text, query }) {
+  const i = query ? text.toLowerCase().indexOf(query) : -1
+  if (i < 0) return text
+  return (
+    <>
+      {text.slice(0, i)}
+      <mark>{text.slice(i, i + query.length)}</mark>
+      {text.slice(i + query.length)}
+    </>
+  )
+}
+
+// Finds tasks by title or goal name across every date, not just the chosen period.
+function TaskSearch({ todos, goals, search, setSearch, onOpen }) {
+  const q = search.trim().toLowerCase()
+  const goalById = Object.fromEntries(goals.map((g) => [g.id, g]))
+  const matches = q
+    ? todos
+        .filter((t) => t.title.toLowerCase().includes(q) || goalById[t.goalId]?.title.toLowerCase().includes(q))
+        // Undated tasks first, then newest day first.
+        .sort((a, b) => (b.date || '9999').localeCompare(a.date || '9999') || (a.time || '').localeCompare(b.time || ''))
+    : []
+
+  return (
+    <div className="search">
+      <input
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="🔍 Search all tasks…"
+        aria-label="Search tasks"
+      />
+      {q && (
+        <>
+          <p className="search-count">
+            {matches.length
+              ? `${matches.length} task${matches.length === 1 ? '' : 's'} found${
+                  matches.length > MAX_RESULTS ? `, showing the newest ${MAX_RESULTS}` : ''
+                }`
+              : 'No tasks match.'}
+          </p>
+          <ul className="lines results">
+            {matches.slice(0, MAX_RESULTS).map((t) => {
+              const goal = goalById[t.goalId]
+              return (
+                <li key={t.id} className={`line result ${t.done ? 'done' : ''}`} onClick={() => onOpen(t)}>
+                  <span className="margin-cell">{t.date ? shortDate(t.date) : 'No date'}</span>
+                  <span className="task">
+                    <span className="status" aria-label={t.done ? 'Done' : 'Not done'}>
+                      {t.done ? '✓' : '○'}
+                    </span>
+                    <span className="title">
+                      <Highlight text={t.title} query={q} />
+                    </span>
+                    {goal && (
+                      <span className="goal-tag">
+                        <span className="swatch" style={{ background: goalColor(goal) }} />
+                        <Highlight text={goal.title} query={q} />
+                      </span>
+                    )}
+                    {t.done && t.minutes > 0 && <span className="logged">{formatDuration(t.minutes)}</span>}
+                  </span>
+                  <span className="row-tools always">
+                    <button className="pen-btn" title={t.date ? 'Open this day in the diary' : 'Open the Tasks list'}>
+                      Open →
+                    </button>
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+    </div>
+  )
 }
 
 const pct = (v, total) => (total ? `${Math.round((v / total) * 100)}%` : '0%')
@@ -99,7 +178,7 @@ function Columns({ buckets }) {
   )
 }
 
-export default function Analysis({ todos, goals }) {
+export default function Analysis({ todos, goals, search, setSearch, onOpen }) {
   const [period, setPeriod] = useState('week')
   const [hover, setHover] = useState(null)
   const [selected, setSelected] = useState(null)
@@ -107,7 +186,7 @@ export default function Analysis({ todos, goals }) {
 
   const { start, end } = rangeFor(period, todos)
   const today = todayISO()
-  const rows = todos.filter((t) => t.date >= start && t.date <= end)
+  const rows = todos.filter((t) => t.date && t.date >= start && t.date <= end)
   const done = rows.filter((t) => t.done)
   const minutes = doneMinutes(rows)
 
@@ -180,6 +259,8 @@ export default function Analysis({ todos, goals }) {
           </div>
         </div>
       </div>
+
+      <TaskSearch todos={todos} goals={goals} search={search} setSearch={setSearch} onOpen={onOpen} />
 
       {!rows.length ? (
         <p className="pencil page-empty">Nothing written in this period yet.</p>

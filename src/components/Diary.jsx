@@ -34,7 +34,7 @@ function WeekTabs({ date, setDate, todos }) {
   )
 }
 
-function NewTodo({ date, goals, onSave }) {
+export function NewTodo({ date, goals, onSave }) {
   const [title, setTitle] = useState('')
   const [time, setTime] = useState('')
   const [goalId, setGoalId] = useState('')
@@ -46,7 +46,7 @@ function NewTodo({ date, goals, onSave }) {
           e.preventDefault()
           if (!title.trim()) return
           // The goal stays selected for quick repeated entries.
-          onSave({ date, time, title, goalId, done: false })
+          if (!onSave({ date, time, title, goalId, done: false })) return // refused: keep the text to fix
           setTitle('')
           setTime('')
         }}
@@ -68,8 +68,8 @@ function NewTodo({ date, goals, onSave }) {
   )
 }
 
-export default function Diary({ todos, goals, onSave, onToggle, onDelete }) {
-  const [date, setDate] = useState(todayISO())
+export default function Diary({ initialDate, todos, goals, onSave, onToggle, onDelete }) {
+  const [date, setDate] = useState(initialDate || todayISO())
   const pickerRef = useRef()
   const openPicker = () => {
     const el = pickerRef.current
@@ -82,7 +82,7 @@ export default function Diary({ todos, goals, onSave, onToggle, onDelete }) {
   const logged = page.reduce((s, t) => s + (t.done && t.minutes > 0 ? t.minutes : 0), 0)
   // Unfinished tasks from earlier days, shown on today's page so nothing gets lost.
   const carried =
-    date === today ? sortTodos(todos.filter((t) => !t.done && t.date < today)).sort((a, b) => a.date.localeCompare(b.date)) : []
+    date === today ? sortTodos(todos.filter((t) => t.date && !t.done && t.date < today)).sort((a, b) => a.date.localeCompare(b.date)) : []
 
   const rowProps = (t) => ({
     todo: t,

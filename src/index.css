@@ -263,6 +263,27 @@ input.margin-cell {
   .line.logging .log-time, .line.logging .row-tools { grid-column: 2; padding: 0 12px 6px; }
 }
 
+/* ---------- task search (Analysis) ---------- */
+.search { padding: 4px 24px 10px calc(var(--margin) + 12px); }
+.search input {
+  width: 100%; border: none; border-bottom: 2px solid var(--rule); background: transparent;
+  color: var(--ink); font-family: var(--hand); font-size: 1.15rem; padding: 4px 8px;
+}
+.search input::placeholder { color: var(--pencil); opacity: 0.8; }
+.search input:focus { outline: none; border-bottom-color: var(--ink); }
+.search-count { margin: 6px 0 0; font-size: 0.95rem; color: var(--pencil); font-family: var(--hand); }
+.results { margin: 4px 0 0 calc(-1 * (var(--margin) + 12px)); }
+.line.result { cursor: pointer; }
+.line.result:hover { background: color-mix(in srgb, var(--rule) 18%, transparent); }
+.result .status { flex-shrink: 0; width: 1.1em; text-align: center; color: var(--pencil); }
+.result.done .status { color: var(--good); }
+.result .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+mark { background: color-mix(in srgb, var(--note) 85%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+@media (max-width: 560px) {
+  .search { padding-right: 12px; }
+  .result .goal-tag { display: none; }
+}
+
 /* ---------- section tabs (Diary / Goals / Analysis) ---------- */
 .section-tabs { display: flex; gap: 6px; padding-left: 18px; }
 .section-tab {
@@ -272,6 +293,23 @@ input.margin-cell {
 }
 .section-tab.goals { background: color-mix(in srgb, var(--note) 70%, var(--tab)); }
 .section-tab.analysis { background: color-mix(in srgb, var(--rule) 45%, var(--tab)); }
+.section-tab.tasks { background: color-mix(in srgb, var(--margin-line) 14%, var(--tab)); }
+/* hidden date input behind the "Move" button on the Tasks page */
+/* short message at the bottom of the screen, e.g. when a task would repeat */
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px);
+  background: var(--ink); color: var(--paper); border-radius: 10px; padding: 8px 16px;
+  font-family: var(--hand); font-size: 1.1rem; box-shadow: 0 4px 14px rgb(0 0 0 / 0.2);
+}
+.schedule { position: relative; display: inline-flex; }
+.line.placing { grid-template-columns: var(--margin) 1fr auto; background: color-mix(in srgb, var(--rule) 18%, transparent); }
+.place-label { align-self: center; margin-right: 4px; font-size: 1rem; color: var(--pencil); white-space: nowrap; }
+@media (max-width: 560px) {
+  .line.placing { grid-template-columns: var(--margin) 1fr; }
+  .line.placing .row-tools { grid-column: 2; flex-wrap: wrap; padding: 0 12px 6px; }
+}
+.schedule-picker { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
 .section-tab.active { background: var(--paper); color: var(--ink); position: relative; top: 1px; }
 
 .page-head.simple { grid-template-columns: var(--margin) 1fr; border-top: none; padding-top: 18px; }
@@ -291,6 +329,7 @@ input.margin-cell {
 }
 .line.new-line { grid-template-columns: var(--margin) 1fr auto auto; }
 .line.editing { grid-template-columns: var(--margin) 1fr auto auto auto; }
+.line.editing.with-minutes { grid-template-columns: var(--margin) 1fr auto auto auto auto; }
 .line.goal-form { grid-template-columns: var(--margin) 1fr auto auto auto; }
 .line.goal-form .margin-cell { font-size: 0.85rem; }
 
@@ -370,7 +409,7 @@ input.margin-cell {
   .line.new-line, .line.goal-form { grid-template-columns: var(--margin) 1fr; }
   .line.new-line .goal-select, .line.new-line .row-tools,
   .line.goal-form .log-time, .line.goal-form .goal-select, .line.goal-form .row-tools { grid-column: 2; padding: 0 12px 6px; }
-  .line.editing { grid-template-columns: var(--margin) 1fr; }
+  .line.editing, .line.editing.with-minutes { grid-template-columns: var(--margin) 1fr; }
   .line.editing .goal-select { grid-column: 2; }
   .notes { padding-left: 16px; grid-template-columns: 1fr 1fr; }
   .chart-block { padding-left: 16px; }
@@ -381,6 +420,6 @@ input.margin-cell {
   .week-tabs { padding: 8px 64px 0 8px; }
   .page-title h2 { font-size: 2rem; }
   .line.editing { grid-template-columns: var(--margin) 1fr; }
-  .line.editing .date-input { grid-column: 2; }
+  .line.editing .date-input, .line.editing .log-time { grid-column: 2; }
   .line.editing .row-tools { grid-column: 2; padding: 0 12px 6px; }
 }

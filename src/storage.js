@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, usingSheets } from './api'
+import { shortDate } from './dates'
 
 export const uid = () => crypto.randomUUID()
 
@@ -16,6 +17,14 @@ export const sortTodos = (list) =>
 // another goal is added or deleted. Slot 0 means the neutral "other" color.
 export const goalColor = (goal) => (goal?.slot ? `var(--series-${goal.slot})` : 'var(--series-other)')
 
+// Two tasks clash when they have the same text (ignoring case and spaces) on the same date.
+// Undated tasks (the Tasks list) are checked against each other the same way.
+const sameText = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase()
+export const findDuplicate = (list, t) =>
+  list.find((x) => x.id !== t.id && (x.date || null) === (t.date || null) && sameText(x.title, t.title))
+export const duplicateMessage = (t) =>
+  `"${t.title.trim()}" is already ${t.date ? `on ${shortDate(t.date)}` : 'in Tasks'}.`
+
 export const doneMinutes = (list) => list.reduce((s, t) => s + (t.done && t.minutes > 0 ? t.minutes : 0), 0)
 
 const source = usingSheets ? 'Google Sheets' : 'this browser'
@@ -25,6 +34,13 @@ export function useStore() {
   const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [toast, setToast] = useState('')
+  const toastTimer = useRef()
+  const showToast = (text) => {
+    setToast(text)
+    clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(''), 4000)
+  }
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -50,13 +66,23 @@ export function useStore() {
       reload()
     })
 
+  // Returns the saved task, or null when it would repeat a task on the same date.
   const saveTodo = (t) => {
+    const before = t.id && todos.find((x) => x.id === t.id)
+    // Only new text or a new date is checked, so tasks that already clash can still be ticked or edited.
+    const moved = !before || (before.date || null) !== (t.date || null) || !sameText(before.title, t.title)
+    if (moved && findDuplicate(todos, t)) {
+      showToast(duplicateMessage(t))
+      return null
+    }
     const saved = {
       ...t,
       title: t.title.trim(),
+      date: t.date || null,
       time: t.time || null,
       goalId: t.goalId || null,
       done: Boolean(t.done),
+      minutes: t.done && Number(t.minutes) > 0 ? Number(t.minutes) : null,
       ...(t.id ? {} : { id: uid(), createdAt: new Date().toISOString() }),
     }
     setTodos((list) =>
@@ -120,6 +146,7 @@ export function useStore() {
     loading,
     error,
     source,
+    toast,
     clearError: () => setError(''),
     saveTodo,
     toggleTodo,

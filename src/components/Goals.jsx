@@ -75,7 +75,7 @@ function GoalItem({ goal, todos, onEdit, onDelete }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const { start, end, label } = goalPeriod(goal.period)
   const linked = todos.filter((t) => t.goalId === goal.id)
-  const inPeriod = linked.filter((t) => t.date >= start && t.date <= end)
+  const inPeriod = linked.filter((t) => t.date && t.date >= start && t.date <= end)
   const minutes = doneMinutes(inPeriod)
   const doneCount = inPeriod.filter((t) => t.done).length
   const pending = linked.filter((t) => !t.done).length

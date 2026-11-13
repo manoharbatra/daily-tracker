@@ -34,12 +34,12 @@ If you've already written tasks in the localStorage version:
 
 The `setup()` function in step 3 creates two tabs with these columns:
 
-| Tab | Columns |
-|---|---|
+| Tab     | Columns                                                 |
+| ------- | ------------------------------------------------------- |
 | `Todos` | id, date, time, title, done, createdAt, minutes, goalId |
-| `Goals` | id, title, targetMinutes, period, slot, createdAt |
+| `Goals` | id, title, targetMinutes, period, slot, createdAt       |
 
-Keep dates as `YYYY-MM-DD` and times as `HH:mm` (24-hour) text, `done` as `true`/`false`, and don't rename or reorder the header row. `time` is empty for tasks without a time; `minutes` is the time logged when the task was marked done (empty while it's not done); `goalId` is the goal a task is linked to (empty for none). In `Goals`, `period` is `weekly` or `monthly`, `targetMinutes` is optional, and `slot` (1–8) fixes the goal's chart color.
+Keep dates as `YYYY-MM-DD` and times as `HH:mm` (24-hour) text, `done` as `true`/`false`, and don't rename or reorder the header row. `date` is empty for tasks in the **Tasks** list (not planned for a day yet); `time` is empty for tasks without a time; `minutes` is the time logged when the task was marked done (empty while it's not done); `goalId` is the goal a task is linked to (empty for none). In `Goals`, `period` is `weekly` or `monthly`, `targetMinutes` is optional, and `slot` (1–8) fixes the goal's chart color.
 
 ---
 
@@ -59,179 +59,207 @@ Keep dates as `YYYY-MM-DD` and times as `HH:mm` (24-hour) text, `done` as `true`
  */
 
 const SHEETS = {
-  Todos: ['id', 'date', 'time', 'title', 'done', 'createdAt', 'minutes', 'goalId'],
-  Goals: ['id', 'title', 'targetMinutes', 'period', 'slot', 'createdAt'],
-};
-const BOOLEAN_FIELDS = ['done'];
-const NUMBER_FIELDS = ['minutes', 'targetMinutes', 'slot'];
+    Todos: [
+        "id",
+        "date",
+        "time",
+        "title",
+        "done",
+        "createdAt",
+        "minutes",
+        "goalId",
+    ],
+    Goals: ["id", "title", "targetMinutes", "period", "slot", "createdAt"],
+}
+const BOOLEAN_FIELDS = ["done"]
+const NUMBER_FIELDS = ["minutes", "targetMinutes", "slot"]
 
 /** Run once from the editor (and again after updating this code): creates tabs, headers and the API token. */
 function setup() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  Object.keys(SHEETS).forEach((name) => {
-    const headers = SHEETS[name];
-    const sh = ss.getSheetByName(name) || ss.insertSheet(name);
-    sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
-    sh.setFrozenRows(1);
-    // Plain text, so Sheets doesn't turn "2026-11-09" or "09:30" into dates.
-    sh.getRange(1, 1, sh.getMaxRows(), headers.length).setNumberFormat('@');
-  });
-  const blank = ss.getSheetByName('Sheet1');
-  if (blank && blank.getLastRow() === 0) ss.deleteSheet(blank);
+    const ss = SpreadsheetApp.getActiveSpreadsheet()
+    Object.keys(SHEETS).forEach((name) => {
+        const headers = SHEETS[name]
+        const sh = ss.getSheetByName(name) || ss.insertSheet(name)
+        sh.getRange(1, 1, 1, headers.length)
+            .setValues([headers])
+            .setFontWeight("bold")
+        sh.setFrozenRows(1)
+        // Plain text, so Sheets doesn't turn "2026-11-09" or "09:30" into dates.
+        sh.getRange(1, 1, sh.getMaxRows(), headers.length).setNumberFormat("@")
+    })
+    const blank = ss.getSheetByName("Sheet1")
+    if (blank && blank.getLastRow() === 0) ss.deleteSheet(blank)
 
-  const props = PropertiesService.getScriptProperties();
-  if (!props.getProperty('API_TOKEN')) props.setProperty('API_TOKEN', Utilities.getUuid());
-  Logger.log('API_TOKEN = ' + props.getProperty('API_TOKEN'));
+    const props = PropertiesService.getScriptProperties()
+    if (!props.getProperty("API_TOKEN"))
+        props.setProperty("API_TOKEN", Utilities.getUuid())
+    Logger.log("API_TOKEN = " + props.getProperty("API_TOKEN"))
 }
 
 /** Health check: open the web app URL in a browser to see this. */
 function doGet() {
-  return json_({ ok: true, data: 'Daily Tracker API is running' });
+    return json_({ ok: true, data: "Daily Tracker API is running" })
 }
 
 function doPost(e) {
-  try {
-    const body = JSON.parse(e.postData.contents);
-    const token = PropertiesService.getScriptProperties().getProperty('API_TOKEN');
-    if (!token || body.token !== token) throw new Error('Invalid token');
-
-    if (body.action === 'getAll') {
-      return json_({ ok: true, data: { todos: readAll_('Todos'), goals: readAll_('Goals') } });
-    }
-
-    // Writes take a lock so two requests can't edit the sheet at the same time.
-    const lock = LockService.getScriptLock();
-    lock.waitLock(10000);
     try {
-      const data = body.data || {};
-      switch (body.action) {
-        case 'upsertTodo':
-          upsert_('Todos', data);
-          break;
-        case 'deleteTodo':
-          remove_('Todos', data.id);
-          break;
-        case 'upsertGoal':
-          upsert_('Goals', data);
-          break;
-        case 'deleteGoal':
-          remove_('Goals', data.id);
-          break;
-        case 'importAll':
-          replaceAll_('Todos', data.todos || []);
-          replaceAll_('Goals', data.goals || []);
-          break;
-        default:
-          throw new Error('Unknown action: ' + body.action);
-      }
-    } finally {
-      lock.releaseLock();
+        const body = JSON.parse(e.postData.contents)
+        const token =
+            PropertiesService.getScriptProperties().getProperty("API_TOKEN")
+        if (!token || body.token !== token) throw new Error("Invalid token")
+
+        if (body.action === "getAll") {
+            return json_({
+                ok: true,
+                data: { todos: readAll_("Todos"), goals: readAll_("Goals") },
+            })
+        }
+
+        // Writes take a lock so two requests can't edit the sheet at the same time.
+        const lock = LockService.getScriptLock()
+        lock.waitLock(10000)
+        try {
+            const data = body.data || {}
+            switch (body.action) {
+                case "upsertTodo":
+                    upsert_("Todos", data)
+                    break
+                case "deleteTodo":
+                    remove_("Todos", data.id)
+                    break
+                case "upsertGoal":
+                    upsert_("Goals", data)
+                    break
+                case "deleteGoal":
+                    remove_("Goals", data.id)
+                    break
+                case "importAll":
+                    replaceAll_("Todos", data.todos || [])
+                    replaceAll_("Goals", data.goals || [])
+                    break
+                default:
+                    throw new Error("Unknown action: " + body.action)
+            }
+        } finally {
+            lock.releaseLock()
+        }
+        return json_({ ok: true, data: null })
+    } catch (err) {
+        return json_({ ok: false, error: String((err && err.message) || err) })
     }
-    return json_({ ok: true, data: null });
-  } catch (err) {
-    return json_({ ok: false, error: String((err && err.message) || err) });
-  }
 }
 
 /* ---------- helpers ---------- */
 
 function sheet_(name) {
-  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
-  if (!sh) throw new Error('Missing tab "' + name + '". Run setup() first.');
-  return sh;
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name)
+    if (!sh) throw new Error('Missing tab "' + name + '". Run setup() first.')
+    return sh
 }
 
 function readAll_(name) {
-  const sh = sheet_(name);
-  const headers = SHEETS[name];
-  const last = sh.getLastRow();
-  if (last < 2) return [];
-  return sh
-    .getRange(2, 1, last - 1, headers.length)
-    .getValues()
-    .filter((row) => row[0] !== '')
-    .map((row) => toObject_(headers, row));
+    const sh = sheet_(name)
+    const headers = SHEETS[name]
+    const last = sh.getLastRow()
+    if (last < 2) return []
+    return sh
+        .getRange(2, 1, last - 1, headers.length)
+        .getValues()
+        .filter((row) => row[0] !== "")
+        .map((row) => toObject_(headers, row))
 }
 
 function toObject_(headers, row) {
-  const obj = {};
-  headers.forEach((h, i) => {
-    let v = row[i];
-    // Safety net in case a date or time was typed by hand and Sheets converted it.
-    if (v instanceof Date) {
-      v = Utilities.formatDate(v, Session.getScriptTimeZone(), h === 'time' ? 'HH:mm' : 'yyyy-MM-dd');
-    }
-    if (BOOLEAN_FIELDS.indexOf(h) >= 0) v = v === true || String(v).toLowerCase() === 'true';
-    else if (v === '') v = null;
-    else if (NUMBER_FIELDS.indexOf(h) >= 0) v = Number(v);
-    else v = String(v);
-    obj[h] = v;
-  });
-  return obj;
+    const obj = {}
+    headers.forEach((h, i) => {
+        let v = row[i]
+        // Safety net in case a date or time was typed by hand and Sheets converted it.
+        if (v instanceof Date) {
+            v = Utilities.formatDate(
+                v,
+                Session.getScriptTimeZone(),
+                h === "time" ? "HH:mm" : "yyyy-MM-dd",
+            )
+        }
+        if (BOOLEAN_FIELDS.indexOf(h) >= 0)
+            v = v === true || String(v).toLowerCase() === "true"
+        else if (v === "") v = null
+        else if (NUMBER_FIELDS.indexOf(h) >= 0) v = Number(v)
+        else v = String(v)
+        obj[h] = v
+    })
+    return obj
 }
 
 function toRow_(headers, obj) {
-  return headers.map((h) => (obj[h] == null ? '' : String(obj[h])));
+    return headers.map((h) => (obj[h] == null ? "" : String(obj[h])))
 }
 
 function ensureRows_(sh, lastRowNeeded) {
-  const max = sh.getMaxRows();
-  if (lastRowNeeded > max) sh.insertRowsAfter(max, lastRowNeeded - max);
+    const max = sh.getMaxRows()
+    if (lastRowNeeded > max) sh.insertRowsAfter(max, lastRowNeeded - max)
 }
 
 function rowIndex_(sh, id) {
-  const last = sh.getLastRow();
-  if (last < 2) return -1;
-  const ids = sh.getRange(2, 1, last - 1, 1).getValues().map((r) => String(r[0]));
-  const i = ids.indexOf(String(id));
-  return i < 0 ? -1 : i + 2;
+    const last = sh.getLastRow()
+    if (last < 2) return -1
+    const ids = sh
+        .getRange(2, 1, last - 1, 1)
+        .getValues()
+        .map((r) => String(r[0]))
+    const i = ids.indexOf(String(id))
+    return i < 0 ? -1 : i + 2
 }
 
 function upsert_(name, obj) {
-  if (!obj || !obj.id) throw new Error('Missing id');
-  const sh = sheet_(name);
-  const headers = SHEETS[name];
-  let row = rowIndex_(sh, obj.id);
-  if (row < 0) {
-    row = sh.getLastRow() + 1;
-    ensureRows_(sh, row);
-  }
-  sh.getRange(row, 1, 1, headers.length).setNumberFormat('@').setValues([toRow_(headers, obj)]);
+    if (!obj || !obj.id) throw new Error("Missing id")
+    const sh = sheet_(name)
+    const headers = SHEETS[name]
+    let row = rowIndex_(sh, obj.id)
+    if (row < 0) {
+        row = sh.getLastRow() + 1
+        ensureRows_(sh, row)
+    }
+    sh.getRange(row, 1, 1, headers.length)
+        .setNumberFormat("@")
+        .setValues([toRow_(headers, obj)])
 }
 
 function remove_(name, id) {
-  const sh = sheet_(name);
-  const row = rowIndex_(sh, id);
-  if (row > 0) sh.deleteRow(row);
+    const sh = sheet_(name)
+    const row = rowIndex_(sh, id)
+    if (row > 0) sh.deleteRow(row)
 }
 
 function replaceAll_(name, list) {
-  const sh = sheet_(name);
-  const headers = SHEETS[name];
-  const last = sh.getLastRow();
-  if (last >= 2) sh.getRange(2, 1, last - 1, headers.length).clearContent();
-  if (!list.length) return;
-  ensureRows_(sh, list.length + 1);
-  sh.getRange(2, 1, list.length, headers.length)
-    .setNumberFormat('@')
-    .setValues(list.map((o) => toRow_(headers, o)));
+    const sh = sheet_(name)
+    const headers = SHEETS[name]
+    const last = sh.getLastRow()
+    if (last >= 2) sh.getRange(2, 1, last - 1, headers.length).clearContent()
+    if (!list.length) return
+    ensureRows_(sh, list.length + 1)
+    sh.getRange(2, 1, list.length, headers.length)
+        .setNumberFormat("@")
+        .setValues(list.map((o) => toRow_(headers, o)))
 }
 
 function json_(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(
+        ContentService.MimeType.JSON,
+    )
 }
 ```
 
 ### The API at a glance
 
-| `action` | `data` | What it does |
-|---|---|---|
-| `getAll` | — | Returns `{ todos: [...], goals: [...] }` |
-| `upsertTodo` | a todo object | Adds the task, or updates the row with the same `id` (edit, tick/untick, move to another day) |
-| `deleteTodo` | `{ id }` | Deletes that row |
-| `upsertGoal` | a goal object | Adds the goal, or updates the row with the same `id` |
-| `deleteGoal` | `{ id }` | Deletes that goal (linked tasks are kept) |
-| `importAll` | `{ todos, goals }` | Replaces all rows in both tabs |
+| `action`     | `data`             | What it does                                                                                  |
+| ------------ | ------------------ | --------------------------------------------------------------------------------------------- |
+| `getAll`     | —                  | Returns `{ todos: [...], goals: [...] }`                                                      |
+| `upsertTodo` | a todo object      | Adds the task, or updates the row with the same `id` (edit, tick/untick, move to another day) |
+| `deleteTodo` | `{ id }`           | Deletes that row                                                                              |
+| `upsertGoal` | a goal object      | Adds the goal, or updates the row with the same `id`                                          |
+| `deleteGoal` | `{ id }`           | Deletes that goal (linked tasks are kept)                                                     |
+| `importAll`  | `{ todos, goals }` | Replaces all rows in both tabs                                                                |
 
 ---
 
@@ -276,11 +304,11 @@ Expected: `{"ok":true,"data":{"todos":[],"goals":[]}}`. `-L` is required because
 ## 6. Connect the React app
 
 1. Copy `.env.example` to **`.env.local`** in the project root and fill in both values:
-   ```bash
-   VITE_API_URL=https://script.google.com/macros/s/AKfycb.../exec
-   VITE_API_TOKEN=your-token-from-step-3
-   ```
-   `.env.local` is already in `.gitignore`.
+    ```bash
+    VITE_API_URL=https://script.google.com/macros/s/AKfycb.../exec
+    VITE_API_TOKEN=your-token-from-step-3
+    ```
+    `.env.local` is already in `.gitignore`.
 2. **Restart** `npm run dev`. Vite only reads `.env.local` at startup.
 3. The app now says "Loading from Google Sheets…" while it loads. Write a task and check that a row appears in the `Todos` tab.
 
@@ -321,12 +349,12 @@ Saving `Code.gs` does not update the live URL. Use **Deploy → Manage deploymen
 
 ## 11. Troubleshooting
 
-| Symptom | Cause and fix |
-|---|---|
-| "Failed to fetch" / CORS error, Network tab shows **404** | Wrong `/exec` URL. Copy it again from **Manage deployments**. |
-| CORS error with a **preflight (OPTIONS)** request | The request was sent as `application/json`. Keep `text/plain;charset=utf-8` as in `src/api.js`. |
-| `Invalid token` | `.env.local` token doesn't match **Script Properties → API_TOKEN**. Fix it and restart `npm run dev`. |
-| `Missing tab "Todos"` or `"Goals"` | Run `setup()` (step 3), and don't rename the tabs. After updating `Code.gs`, run `setup()` again so new tabs and columns are added. |
-| Response is an HTML page | Wrong URL (use `/exec`) or **Who has access** isn't **Anyone**. |
-| Code changes don't show up | Publish a new version ([step 9](#9-updating-the-apps-script-later)). |
-| App still shows "Loading from this browser" | `VITE_API_URL` isn't set, or the dev server wasn't restarted. |
+| Symptom                                                   | Cause and fix                                                                                                                       |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| "Failed to fetch" / CORS error, Network tab shows **404** | Wrong `/exec` URL. Copy it again from **Manage deployments**.                                                                       |
+| CORS error with a **preflight (OPTIONS)** request         | The request was sent as `application/json`. Keep `text/plain;charset=utf-8` as in `src/api.js`.                                     |
+| `Invalid token`                                           | `.env.local` token doesn't match **Script Properties → API_TOKEN**. Fix it and restart `npm run dev`.                               |
+| `Missing tab "Todos"` or `"Goals"`                        | Run `setup()` (step 3), and don't rename the tabs. After updating `Code.gs`, run `setup()` again so new tabs and columns are added. |
+| Response is an HTML page                                  | Wrong URL (use `/exec`) or **Who has access** isn't **Anyone**.                                                                     |
+| Code changes don't show up                                | Publish a new version ([step 9](#9-updating-the-apps-script-later)).                                                                |
+| App still shows "Loading from this browser"               | `VITE_API_URL` isn't set, or the dev server wasn't restarted.                                                                       |
