@@ -164,12 +164,14 @@ export default function TodoRow({ todo, goals, onToggle, onSave, onDelete, onMov
   }
 
   return (
-    <li className={`line ${todo.done ? 'done' : ''}`}>
+    <li className={`line task-line ${todo.done ? 'done' : ''}`}>
       <span className="margin-cell">{todo.time ? formatTime(todo.time) : ''}</span>
       <label className="task">
         <input type="checkbox" checked={todo.done} onChange={onCheck} />
         <span className="box" aria-hidden="true" />
         <span className="title">{todo.title}</span>
+      </label>
+      <span className="task-meta">
         {goal && (
           <span className="goal-tag">
             <span className="swatch" style={{ background: goalColor(goal) }} />
@@ -179,7 +181,7 @@ export default function TodoRow({ todo, goals, onToggle, onSave, onDelete, onMov
         {todo.done && todo.minutes > 0 && <span className="logged">{formatDuration(todo.minutes)}</span>}
         {showDate && <span className="from-date">({shortDate(todo.date)})</span>}
         {note && <span className="from-date">{note}</span>}
-      </label>
+      </span>
       <span className="row-tools">
         {onMove && (
           <button className="pen-btn" onClick={onMove} title="Move to today">→ today</button>
